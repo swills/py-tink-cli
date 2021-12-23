@@ -32,18 +32,23 @@ def get_mac_for_hostname(server, port, creds, hostname):
 
 
 def push_workflow(server, port, creds, client_name, template_name):
-    result = []
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         client_mac = get_mac_for_hostname(server, port, creds, client_name)
         template_id = get_template_by_name(server, port, creds, template_name)
-        # hardware = '{"device_1":"'${MAC}'"}'
         hardware = {'device_1': client_mac}
         hardware_json = json.dumps(hardware)
         response = stub.CreateWorkflow(workflow_pb2.CreateRequest(
             template=template_id, hardware=hardware_json))
         result = [response.id]
     return result
+
+
+def delete_workflow(server, port, creds, workflow_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
+        stub.DeleteWorkflow(workflow_pb2.GetRequest(id=workflow_id))
+    return True
 
 
 def get_all_workflows(server, port, creds):
@@ -75,10 +80,10 @@ def get_all_workflows(server, port, creds):
             for dev in hardware_json.keys():
                 mac = hardware_json[dev]
                 hostname = get_hostname_for_mac(server, port, creds, mac)
-                devdata = {'mac': mac,
-                           'hostname': hostname}
+                dev_data = {'mac': mac,
+                            'hostname': hostname}
                 devs.append(devs)
-            re['devices'] = devdata
+            re['devices'] = dev_data
 
             result.append(re)
     return result
@@ -169,6 +174,10 @@ def run():
                         dest="host_name",
                         default=None,
                         help="host name to operate on")
+    parser.add_argument("--id",
+                        dest="id",
+                        default=None,
+                        help="id to operate on")
     parser.add_argument("action",
                         help="action to perform")
     parser.add_argument("object",
@@ -211,6 +220,13 @@ def run():
                 result = push_workflow(args.tink_host, args.rpc_port, creds,
                                        args.host_name, args.template_name)
                 print(json.dumps(result, indent=2))
+    elif args.action == "delete":
+        if args.object == "workflow":
+            if args.id is not None:
+                result = delete_workflow(args.tink_host, args.rpc_port, creds,
+                                         args.id)
+                if result:
+                    print(json.dumps([args.id]))
 
 
 if __name__ == '__main__':
