@@ -6,6 +6,7 @@ import grpc
 import urllib.request
 import argparse
 import os
+from google.protobuf.json_format import Parse
 
 import hardware_pb2_grpc
 import hardware_pb2
@@ -42,6 +43,24 @@ def push_workflow(server, port, creds, client_name, template_name):
             template=template_id, hardware=hardware_json))
         result = [response.id]
     return result
+
+
+def push_hardware(server, port, creds, hardware_file):
+    with open(hardware_file, "r") as myfile:
+        data = myfile.read()
+
+    hardware = json.loads(data)
+    hardware_wrapper = hardware_pb2.Hardware()
+    nw = Parse(json.dumps(hardware['network']), hardware_wrapper.network)
+    hardware_wrapper.id = hardware['id']
+    hardware_wrapper.metadata = str(hardware['metadata'])
+    hardware_wrapper.network.CopyFrom(nw)
+
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = hardware_pb2_grpc.HardwareServiceStub(channel)
+        req = hardware_pb2.PushRequest(data=hardware_wrapper)
+        response = stub.Push(req)
+    return [hardware['id']]
 
 
 def delete_workflow(server, port, creds, workflow_id):
@@ -178,6 +197,10 @@ def run():
                         dest="id",
                         default=None,
                         help="id to operate on")
+    parser.add_argument("--file",
+                        dest="file",
+                        default=None,
+                        help="file to use for hardware/template")
     parser.add_argument("action",
                         help="action to perform")
     parser.add_argument("object",
@@ -220,6 +243,11 @@ def run():
                 result = push_workflow(args.tink_host, args.rpc_port, creds,
                                        args.host_name, args.template_name)
                 print(json.dumps(result, indent=2))
+        elif args.object == "hardware":
+            if args.file is not None:
+                result = push_hardware(args.tink_host, args.rpc_port, creds,
+                                       args.file)
+                print(json.dumps(result))
     elif args.action == "delete":
         if args.object == "workflow":
             if args.id is not None:
