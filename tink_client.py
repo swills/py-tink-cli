@@ -53,13 +53,13 @@ def push_hardware(server, port, creds, hardware_file):
     hardware_wrapper = hardware_pb2.Hardware()
     nw = Parse(json.dumps(hardware['network']), hardware_wrapper.network)
     hardware_wrapper.id = hardware['id']
-    hardware_wrapper.metadata = str(hardware['metadata'])
+    hardware_wrapper.metadata = json.dumps(hardware['metadata'], separators=(',', ':'))
     hardware_wrapper.network.CopyFrom(nw)
 
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = hardware_pb2_grpc.HardwareServiceStub(channel)
         req = hardware_pb2.PushRequest(data=hardware_wrapper)
-        response = stub.Push(req)
+        stub.Push(req)
     return [hardware['id']]
 
 
