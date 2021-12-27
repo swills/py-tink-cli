@@ -6,6 +6,7 @@ import grpc
 import urllib.request
 import argparse
 import os
+import yaml
 from google.protobuf.json_format import Parse
 
 import hardware_pb2_grpc
@@ -39,7 +40,7 @@ def push_workflow(server, port, creds, client_name, template_name):
         if client_mac == "":
             raise Exception("Invalid hostname")
         template_id = get_template_by_name(server, port, creds, template_name)
-        if template_id == {}:
+        if template_id is None:
             raise Exception("Invalid template name")
         hardware = {'device_1': client_mac}
         hardware_json = json.dumps(hardware)
@@ -50,8 +51,8 @@ def push_workflow(server, port, creds, client_name, template_name):
 
 
 def push_hardware(server, port, creds, hardware_file):
-    with open(hardware_file, "r") as myfile:
-        data = myfile.read()
+    with open(hardware_file, "r") as my_file:
+        data = my_file.read()
 
     hardware = json.loads(data)
     hardware_wrapper = hardware_pb2.Hardware()
@@ -67,15 +68,24 @@ def push_hardware(server, port, creds, hardware_file):
     return [hardware['id']]
 
 
-def push_template(server, port, creds, hardware_file):
-    with open(hardware_file, "r") as myfile:
-        data = myfile.read()
+def push_template(server, port, creds, template_file):
+    with open(template_file, "r") as my_file:
+        data = my_file.read()
 
+    template_data = yaml.load(data, Loader=yaml.Loader)
+    template_name = template_data['name']
+    template_id = get_template_by_name(server, port, creds, template_name)
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
-        req = template_pb2.CreateResponse()
-        stub.Push(req)
-    return []
+        if template_id is None:
+            req = template_pb2.WorkflowTemplate(name=template_name, data=data)
+            stub.CreateTemplate(req)
+            template_id = get_template_by_name(server, port, creds, template_name)
+        else:
+            req = template_pb2.WorkflowTemplate(name=template_name, data=data,
+                                                id=template_id)
+            stub.UpdateTemplate(req)
+    return [template_id]
 
 
 def delete_workflow(server, port, creds, workflow_id):
@@ -165,7 +175,7 @@ def get_template_by_id(server, port, creds, template_id):
 
 def get_template_by_name(server, port, creds, template_name):
     res = get_all_templates(server, port, creds)
-    result = {}
+    result = None
     for re in res:
         if re['name'] == template_name:
             result = re['id']
