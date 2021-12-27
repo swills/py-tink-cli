@@ -36,7 +36,11 @@ def push_workflow(server, port, creds, client_name, template_name):
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         client_mac = get_mac_for_hostname(server, port, creds, client_name)
+        if client_mac == "":
+            raise Exception("Invalid hostname")
         template_id = get_template_by_name(server, port, creds, template_name)
+        if template_id == {}:
+            raise Exception("Invalid template name")
         hardware = {'device_1': client_mac}
         hardware_json = json.dumps(hardware)
         response = stub.CreateWorkflow(workflow_pb2.CreateRequest(
@@ -61,6 +65,17 @@ def push_hardware(server, port, creds, hardware_file):
         req = hardware_pb2.PushRequest(data=hardware_wrapper)
         stub.Push(req)
     return [hardware['id']]
+
+
+def push_template(server, port, creds, hardware_file):
+    with open(hardware_file, "r") as myfile:
+        data = myfile.read()
+
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = template_pb2_grpc.TemplateServiceStub(channel)
+        req = template_pb2.CreateResponse()
+        stub.Push(req)
+    return []
 
 
 def delete_workflow(server, port, creds, workflow_id):
@@ -246,6 +261,11 @@ def run():
         elif args.object == "hardware":
             if args.file is not None:
                 result = push_hardware(args.tink_host, args.rpc_port, creds,
+                                       args.file)
+                print(json.dumps(result))
+        elif args.object == "template":
+            if args.file is not None:
+                result = push_template(args.tink_host, args.rpc_port, creds,
                                        args.file)
                 print(json.dumps(result))
     elif args.action == "delete":
