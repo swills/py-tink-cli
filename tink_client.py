@@ -88,6 +88,20 @@ def push_template(server, port, creds, template_file):
     return [template_id]
 
 
+def delete_hardware(server, port, creds, hardware_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = hardware_pb2_grpc.HardwareServiceStub(channel)
+        stub.Delete(hardware_pb2.DeleteRequest(id=hardware_id))
+    return True
+
+
+def delete_template(server, port, creds, template_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = template_pb2_grpc.TemplateServiceStub(channel)
+        stub.DeleteTemplate(template_pb2.GetRequest(id=template_id))
+    return True
+
+
 def delete_workflow(server, port, creds, workflow_id):
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
@@ -279,7 +293,19 @@ def run():
                                        args.file)
                 print(json.dumps(result))
     elif args.action == "delete":
-        if args.object == "workflow":
+        if args.object == "hardware":
+            if args.id is not None:
+                result = delete_hardware(args.tink_host, args.rpc_port, creds,
+                                         args.id)
+                if result:
+                    print(json.dumps([args.id]))
+        elif args.object == "template":
+            if args.id is not None:
+                result = delete_template(args.tink_host, args.rpc_port, creds,
+                                         args.id)
+                if result:
+                    print(json.dumps([args.id]))
+        elif args.object == "workflow":
             if args.id is not None:
                 result = delete_workflow(args.tink_host, args.rpc_port, creds,
                                          args.id)
