@@ -140,6 +140,42 @@ def get_workflow_events(server, port, creds, workflow_id):
     return result
 
 
+def get_workflow_by_hardware_id(server, port, creds, hardware_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
+        req = workflow_pb2.WorkflowContextRequest(worker_id=hardware_id)
+        response = stub.GetWorkflowContextList(req)
+        res = []
+        for context in response.workflow_contexts:
+            r = {
+                'workflow_id': context.workflow_id,
+                'current_worker': context.current_worker,
+                'current_task': context.current_task,
+                'current_action': context.current_action,
+                'current_action_index': context.current_action_index,
+                'current_action_stat': state_map(context.current_action_state),
+                'total_number_of_actions': context.total_number_of_actions,
+            }
+            res.append(r)
+    return res
+
+
+def get_workflow_by_hostname(server,port, creds, host_name):
+    hardware_info = get_hardware_name(server, port, creds, host_name)
+    result = get_workflow_by_hardware_id(server, port, creds, hardware_info['id'])
+    return result
+
+
+def get_workflows_by_hostname(server, port, creds, host_name):
+    res = get_all_workflows(server, port, creds)
+    result = {}
+    for re in res:
+        for device in re['devices']:
+            if device['hostname'] == host_name:
+                result = re
+    return result
+
+
 def get_all_workflows(server, port, creds):
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
@@ -159,8 +195,8 @@ def get_all_workflows(server, port, creds):
                 hostname = get_hostname_for_mac(server, port, creds, mac)
                 dev_data = {'mac': mac,
                             'hostname': hostname}
-                devs.append(devs)
-            re['devices'] = dev_data
+                devs.append(dev_data)
+            re['devices'] = devs
 
             result.append(re)
     return result
@@ -314,12 +350,27 @@ def run():
 
     if args.action == "get":
         if args.object == "workflows":
-            result = get_all_workflows(args.tink_host, args.rpc_port, creds)
-            print(json.dumps(result, indent=2))
+            if args.host_name is not None:
+                result = get_workflows_by_hostname(args.tink_host, args.rpc_port,
+                                                   creds, args.host_name)
+                print(json.dumps(result, indent=2))
+            else:
+                result = get_all_workflows(args.tink_host, args.rpc_port, creds)
+                print(json.dumps(result, indent=2))
         elif args.object == "workflow":
             if args.id is not None:
                 result = get_workflow_events(args.tink_host, args.rpc_port, creds,
                                              workflow_id=args.id)
+                print(json.dumps(result, indent=2))
+            elif args.host_name is not None:
+                result = get_workflow_by_hostname(args.tink_host, args.rpc_port,
+                                                  creds, args.host_name)
+                print(json.dumps(result, indent=2))
+
+        elif args.object == "workflow_by_hardware":
+            if args.id is not None:
+                result = get_workflow_by_hardware_id(args.tink_host, args.rpc_port,
+                                                     creds, hardware_id=args.id)
                 print(json.dumps(result, indent=2))
         elif args.object == "hardware":
             if args.id is not None:
