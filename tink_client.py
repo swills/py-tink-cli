@@ -8,6 +8,7 @@ import argparse
 import os
 import yaml
 from google.protobuf.json_format import Parse
+from datetime import datetime
 
 import hardware_pb2_grpc
 import hardware_pb2
@@ -109,30 +110,48 @@ def delete_workflow(server, port, creds, workflow_id):
     return True
 
 
+def get_workflow_events(server, port, creds, workflow_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
+        res = stub.ShowWorkflowEvents(workflow_pb2.GetRequest(id=workflow_id))
+        result = {}
+        actions = []
+        result['worker_id'] = None
+        result['task_name'] = None
+        result['seconds'] = 0
+        for r in res:
+            if result['worker_id'] is None:
+                result['worker_id'] = r.worker_id
+            if result['task_name'] is None:
+                result['task_name'] = r.task_name
+            action_result = {
+                'action_name': r.action_name,
+                'action_status': state_map(r.action_status),
+                'message': r.message,
+                'timestamp': datetime.fromtimestamp(r.created_at.seconds).strftime(
+                    "%A, %B %d, %Y %I:%M:%S")
+            }
+            if action_result['action_status'] != "Running":
+                action_result['seconds'] = r.seconds
+                result['seconds'] += r.seconds
+            actions.append(action_result)
+
+        result['actions'] = actions
+    return result
+
+
 def get_all_workflows(server, port, creds):
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         response = stub.ListWorkflows(workflow_pb2.GetRequest())
         result = []
         for r in response:
-            # print(r)
             re = {
                 'id': r.id,
             }
             template = get_template_by_id(server, port, creds, template_id=r.template)
             re['template'] = template
-            if r.state == workflow_pb2.STATE_PENDING:
-                re['state'] = "Pending"
-            elif r.state == workflow_pb2.STATE_RUNNING:
-                re['state'] = "Running"
-            elif r.state == workflow_pb2.STATE_FAILED:
-                re['state'] = "Failed"
-            elif r.state == workflow_pb2.STATE_TIMEOUT:
-                re['state'] = "Timeout"
-            elif r.state == workflow_pb2.STATE_SUCCESS:
-                re['state'] = "Success"
-            else:
-                re['state'] = "Unknown"
+            re['state'] = state_map(r.state)
             hardware_json = json.loads(r.hardware)
             devs = []
             for dev in hardware_json.keys():
@@ -145,6 +164,21 @@ def get_all_workflows(server, port, creds):
 
             result.append(re)
     return result
+
+
+def state_map(r):
+    if r == workflow_pb2.STATE_PENDING:
+        return "Pending"
+    elif r == workflow_pb2.STATE_RUNNING:
+        return "Running"
+    elif r == workflow_pb2.STATE_FAILED:
+        return "Failed"
+    elif r == workflow_pb2.STATE_TIMEOUT:
+        return "Timeout"
+    elif r == workflow_pb2.STATE_SUCCESS:
+        return "Success"
+    else:
+        return "Unknown"
 
 
 def get_all_hardware(server, port, creds):
@@ -260,6 +294,11 @@ def run():
         if args.object == "workflows":
             result = get_all_workflows(args.tink_host, args.rpc_port, creds)
             print(json.dumps(result, indent=2))
+        elif args.object == "workflow":
+            if args.id is not None:
+                result = get_workflow_events(args.tink_host, args.rpc_port, creds,
+                                             workflow_id=args.id)
+                print(json.dumps(result, indent=2))
         elif args.object == "hardware":
             result = get_all_hardware(args.tink_host, args.rpc_port, creds)
             print(json.dumps(result, indent=2))
