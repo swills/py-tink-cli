@@ -315,6 +315,11 @@ def run():
                                                              args.rpc_port, creds,
                                                              template_id=template_id)
                         print(template_result)
+            if args.id is not None:
+                template_result = get_template_steps(args.tink_host,
+                                                     args.rpc_port, creds,
+                                                     template_id=args.id)
+                print(template_result)
     elif args.action == "push":
         if args.object == "workflow":
             if args.host_name is not None and args.template_name is not None:
