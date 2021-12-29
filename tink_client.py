@@ -181,6 +181,28 @@ def state_map(r):
         return "Unknown"
 
 
+def get_hardware_name(server, port, creds, hardware_name):
+    res = get_all_hardware(server, port, creds)
+    result = None
+    for re in res:
+        if re['hostname'] == hardware_name:
+            result = get_hardware_id(server, port, creds, re['id'])
+    return result
+
+
+def get_hardware_id(server, port, creds, hardware_id):
+    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        stub = hardware_pb2_grpc.HardwareServiceStub(channel)
+        response = stub.ByID(hardware_pb2.GetRequest(id=hardware_id))
+        result = {
+            'id': response.id,
+            'hostname': response.network.interfaces[0].dhcp.hostname,
+            'ip': response.network.interfaces[0].dhcp.ip.address,
+            'mac': response.network.interfaces[0].dhcp.mac,
+        }
+    return result
+
+
 def get_all_hardware(server, port, creds):
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = hardware_pb2_grpc.HardwareServiceStub(channel)
@@ -300,8 +322,16 @@ def run():
                                              workflow_id=args.id)
                 print(json.dumps(result, indent=2))
         elif args.object == "hardware":
-            result = get_all_hardware(args.tink_host, args.rpc_port, creds)
-            print(json.dumps(result, indent=2))
+            if args.id is not None:
+                result = get_hardware_id(args.tink_host, args.rpc_port, creds, args.id)
+                print(json.dumps(result, indent=2))
+            elif args.host_name is not None:
+                result = get_hardware_name(args.tink_host, args.rpc_port, creds,
+                                           args.host_name)
+                print(json.dumps(result, indent=2))
+            else:
+                result = get_all_hardware(args.tink_host, args.rpc_port, creds)
+                print(json.dumps(result, indent=2))
         elif args.object == "templates":
             result = get_all_templates(args.tink_host, args.rpc_port, creds)
             print(json.dumps(result, indent=2))
