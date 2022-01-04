@@ -18,8 +18,8 @@ import template_pb2_grpc
 import workflow_pb2
 import workflow_pb2_grpc
 
-ipmi_userid = os.getenv['IPMI_USER']
-ipmi_password = os.getenv['IPMI_PASS']
+ipmi_userid = os.getenv('IPMI_USER')
+ipmi_password = os.getenv('IPMI_PASS')
 
 
 def create_parser():
