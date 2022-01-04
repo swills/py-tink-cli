@@ -1,0 +1,117 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.5.0
+    hooks:
+    -   id: trailing-whitespace
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+    -   id: end-of-file-fixer
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+    -   id: fix-encoding-pragma
+        args: [--remove]
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+    -   id: debug-statements
+        language_version: python3
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v2.4.0
+    hooks:
+    -   id: pyupgrade
+        args: [--py3-plus]
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.3.0
+    hooks:
+    -   id: reorder-python-imports
+        args: ['--application-directories=.', --py3-plus]
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+    hooks:
+    -   id: flake8
+        language_version: python3
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
+-   repo: https://github.com/swills/check-trailing-commas.git
+    rev: 127f73cb6f78ad2d7e427beeb3d96aecb4629c6e
+    hooks:
+    -   id: check-trailing-commas
+        exclude: |
+            (?x)^(
+                hardware_pb2.py|
+                hardware_pb2_grpc.py|
+                packet_pb2.py|
+                packet_pb2_grpc.py|
+                template_pb2.py|
+                template_pb2_grpc.py|
+                workflow_pb2.py|
+                workflow_pb2_grpc.py
+            )$
