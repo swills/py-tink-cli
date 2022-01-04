@@ -18,8 +18,8 @@ import template_pb2_grpc
 import workflow_pb2
 import workflow_pb2_grpc
 
-ipmi_userid = os.environ['IPMI_USER']
-ipmi_password = os.environ['IPMI_PASS']
+ipmi_userid = os.getenv['IPMI_USER']
+ipmi_password = os.getenv['IPMI_PASS']
 
 
 def create_parser():
@@ -32,7 +32,7 @@ def create_parser():
                         )
     parser.add_argument("--tink_host",
                         dest="tink_host",
-                        default=os.environ.get('TINK_HOST'),
+                        default=os.getenv('TINK_HOST'),
                         help="tink host. required.")
     parser.add_argument("--rpc_port",
                         dest="rpc_port",
@@ -447,7 +447,8 @@ def run():
             if args.host is not None and args.template_name is not None:
                 result = push_workflow(args.tink_host, args.rpc_port, creds,
                                        args.host, args.template_name)
-                if args.reboot:
+                if args.reboot and \
+                        ipmi_userid is not None and ipmi_password is not None:
                     hardware_info = get_hardware_name(args.tink_host, args.rpc_port,
                                                       creds, "ipmi." + args.host)
                     bmc = hardware_info['ip']
