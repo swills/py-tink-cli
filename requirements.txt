@@ -1,0 +1,4 @@
+grpcio
+yaml
+pyghmi
+protobuf
