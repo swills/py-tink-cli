@@ -451,9 +451,10 @@ def run():
                         ipmi_userid is not None and ipmi_password is not None:
                     hardware_info = get_hardware_name(args.tink_host, args.rpc_port,
                                                       creds, "ipmi." + args.host)
-                    bmc = hardware_info['ip']
-                    ipmi_boot_pxe(host=bmc, username=ipmi_userid,
-                                  password=ipmi_password)
+                    if hardware_info is not None:
+                        bmc = hardware_info['ip']
+                        ipmi_boot_pxe(host=bmc, username=ipmi_userid,
+                                      password=ipmi_password)
             else:
                 print("Workflow push requires host and template_name args")
         elif args.object == "hardware":
