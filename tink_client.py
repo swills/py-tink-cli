@@ -90,10 +90,15 @@ def state_map(r):
 
 
 def get_host_for_mac(server, port, creds, mac):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
-        stub = hardware_pb2_grpc.HardwareServiceStub(channel)
-        response = stub.ByMAC(hardware_pb2.GetRequest(mac=mac.lower()))
-    return response.network.interfaces[0].dhcp.hostname
+    resp = None
+    try:
+        with grpc.secure_channel(server + ":" + port, creds) as channel:
+            stub = hardware_pb2_grpc.HardwareServiceStub(channel)
+            response = stub.ByMAC(hardware_pb2.GetRequest(mac=mac.lower()))
+            resp = response.network.interfaces[0].dhcp.hostname
+    except grpc._channel._InactiveRpcError:
+        pass
+    return resp
 
 
 def get_mac_for_host(server, port, creds, host):
