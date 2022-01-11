@@ -2,3 +2,4 @@ grpcio
 PyYAML
 pyghmi
 protobuf
+googleapis-common-protos
