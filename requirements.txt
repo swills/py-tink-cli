@@ -1,4 +1,4 @@
 grpcio
-yaml
+PyYAML
 pyghmi
 protobuf
