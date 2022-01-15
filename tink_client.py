@@ -21,6 +21,11 @@ import workflow_pb2_grpc
 ipmi_userid = os.getenv('IPMI_USER')
 ipmi_password = os.getenv('IPMI_PASS')
 
+global all_hardware_info
+global all_template_info
+all_hardware_info = None
+all_template_info = None
+
 
 def create_parser():
     parser = argparse.ArgumentParser(description='do tink stuff')
@@ -89,7 +94,7 @@ def state_map(r):
         return "Unknown"
 
 
-def get_host_for_mac(server, port, creds, mac):
+def get_host_for_mac2(server, port, creds, mac):
     resp = None
     try:
         with grpc.secure_channel(server + ":" + port, creds) as channel:
@@ -99,6 +104,15 @@ def get_host_for_mac(server, port, creds, mac):
     except grpc._channel._InactiveRpcError:
         pass
     return resp
+
+
+def get_host_for_mac(server, port, creds, mac):
+    res = get_all_hardware(server, port, creds)
+    host = ""
+    for re in res:
+        if re['mac'] == mac:
+            host = re['host']
+    return host
 
 
 def get_mac_for_host(server, port, creds, host):
@@ -111,20 +125,23 @@ def get_mac_for_host(server, port, creds, host):
 
 
 def get_all_hardware(server, port, creds):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
-        stub = hardware_pb2_grpc.HardwareServiceStub(channel)
-        response = stub.All(hardware_pb2.GetRequest())
-        result = []
+    global all_hardware_info
+    if all_hardware_info is None:
+        with grpc.secure_channel(server + ":" + port, creds) as channel:
+            stub = hardware_pb2_grpc.HardwareServiceStub(channel)
+            response = stub.All(hardware_pb2.GetRequest())
+            result = []
 
-        for r in response:
-            re = {
-                'id': r.id,
-                'host': r.network.interfaces[0].dhcp.hostname,
-                'ip': r.network.interfaces[0].dhcp.ip.address,
-                'mac': r.network.interfaces[0].dhcp.mac,
-            }
-            result.append(re)
-    return result
+            for r in response:
+                re = {
+                    'id': r.id,
+                    'host': r.network.interfaces[0].dhcp.hostname,
+                    'ip': r.network.interfaces[0].dhcp.ip.address,
+                    'mac': r.network.interfaces[0].dhcp.mac,
+                }
+                result.append(re)
+        all_hardware_info = result
+    return all_hardware_info
 
 
 def get_hardware(args, creds):
@@ -175,9 +192,11 @@ def get_all_templates(server, port, creds):
 
 
 def get_template_by_id(server, port, creds, template_id):
-    res = get_all_templates(server, port, creds)
+    global all_template_info
+    if all_template_info is None:
+        all_template_info = get_all_templates(server, port, creds)
     result = {}
-    for re in res:
+    for re in all_template_info:
         if re['id'] == template_id:
             result = re
     return result
@@ -394,7 +413,6 @@ def ipmi_boot_pxe(host, username, password):
 
 
 def run():
-
     parser = create_parser()
     args = parser.parse_args()
 
