@@ -355,6 +355,9 @@ def push_template(server, port, creds, template_file):
 
     template_data = yaml.load(data, Loader=yaml.Loader)
     template_name = template_data['name']
+    existing_template = get_template_by_name(server, port, creds, template_name)
+    if existing_template is not None:
+        delete_template(server, port, creds, existing_template)
     template_id = get_template_by_name(server, port, creds, template_name)
     with grpc.secure_channel(server + ":" + port, creds) as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
