@@ -323,11 +323,11 @@ def get_workflow_by_host(server, port, creds, host):
 
 def get_workflows_by_host(server, port, creds, host):
     res = get_all_workflows(server, port, creds)
-    result = {}
+    result = []
     for re in res:
         for device in re['devices']:
             if device['host'] == host:
-                result = re
+                result.append(re)
     return result
 
 
