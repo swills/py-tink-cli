@@ -399,6 +399,14 @@ def push_workflow(server, port, creds, client_name, template_name):
             raise Exception("Invalid template name")
         hardware = {'device_1': client_mac}
         hardware_json = json.dumps(hardware)
+        existing_workflows = get_workflows_by_host(server=server, port=port,
+                                                   creds=creds, host=client_name)
+        for workflow in existing_workflows:
+            if workflow['devices'][0]['host'].lower() == client_name.lower():
+                if workflow['state'] == "Running":
+                    raise ValueError("Running workflow exists for host")
+                if workflow['state'] == "Pending":
+                    raise ValueError("Pending workflow exists for host")
         response = stub.CreateWorkflow(workflow_pb2.CreateRequest(
             template=template_id, hardware=hardware_json))
     return [response.id]
