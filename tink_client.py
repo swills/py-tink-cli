@@ -336,6 +336,22 @@ def push_hardware(server, port, creds, hardware_file):
         data = my_file.read()
 
     hardware = json.loads(data)
+    hardware_id = hardware['id']
+    hardware_hostname = hardware['network']['interfaces'][0]['dhcp']['hostname']
+    hardware_ip = hardware['network']['interfaces'][0]['dhcp']['ip']['address']
+    hardware_mac = hardware['network']['interfaces'][0]['dhcp']['mac']
+    if len(hardware['network']['interfaces']) != 1:
+        raise ValueError("Must specify exactly one IP per host")
+    hardware_info = get_all_hardware(server=server, port=port, creds=creds)
+    for existing in hardware_info:
+        if existing['host'].lower == hardware_hostname.lower():
+            raise ValueError("Duplicate hostname")
+        if existing['ip'] == hardware_ip:
+            raise ValueError("Duplicate IP")
+        if existing['mac'].lower() == hardware_mac.lower():
+            raise ValueError("Duplicate MAC address")
+        if existing['id'] == hardware_id:
+            raise ValueError("Duplicate hardware ID")
     hardware_wrapper = hardware_pb2.Hardware()
     nw = Parse(json.dumps(hardware['network']), hardware_wrapper.network)
     hardware_wrapper.id = hardware['id']
