@@ -3,6 +3,7 @@ import argparse
 import json
 import logging
 import os
+import socket
 import urllib.request
 from datetime import datetime
 
@@ -446,6 +447,8 @@ def run():
     if args.tink_host is None:
         print("TINK_HOST environment variable must be set or --host must be specified")
         return
+
+    args.tink_host = socket.gethostbyname(args.tink_host)
 
     cert_url = 'http://' + args.tink_host + ':' + args.http_port + '/cert'
     with urllib.request.urlopen(cert_url) as response:
