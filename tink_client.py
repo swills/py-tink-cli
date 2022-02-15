@@ -356,6 +356,12 @@ def push_hardware(server, port, creds, hardware_file):
     hardware_wrapper = hardware_pb2.Hardware()
     nw = Parse(json.dumps(hardware['network']), hardware_wrapper.network)
     hardware_wrapper.id = hardware['id']
+    for ele in hardware_wrapper.id:
+        if ele.isupper():
+            raise ValueError('Uppercase in Id')
+    for ele in hardware_mac:
+        if ele.isupper():
+            raise ValueError('Uppercase in MAC')
     hardware_wrapper.metadata = json.dumps(hardware['metadata'], separators=(',', ':'))
     hardware_wrapper.network.CopyFrom(nw)
 
