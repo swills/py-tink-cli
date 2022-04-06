@@ -95,10 +95,14 @@ def state_map(r):
         return "Unknown"
 
 
-def get_host_for_mac2(server, port, creds, mac):
+def connect():
+    raise NotImplementedError("connect should have been overridden in run()")
+
+
+def get_host_for_mac2(mac):
     resp = None
     try:
-        with grpc.secure_channel(server + ":" + port, creds) as channel:
+        with connect() as channel:
             stub = hardware_pb2_grpc.HardwareServiceStub(channel)
             response = stub.ByMAC(hardware_pb2.GetRequest(mac=mac.lower()))
             resp = response.network.interfaces[0].dhcp.hostname
@@ -107,8 +111,8 @@ def get_host_for_mac2(server, port, creds, mac):
     return resp
 
 
-def get_host_for_mac(server, port, creds, mac):
-    res = get_all_hardware(server, port, creds)
+def get_host_for_mac(mac):
+    res = get_all_hardware()
     host = ""
     for re in res:
         if re['mac'] == mac:
@@ -116,8 +120,8 @@ def get_host_for_mac(server, port, creds, mac):
     return host
 
 
-def get_mac_for_host(server, port, creds, host):
-    res = get_all_hardware(server, port, creds)
+def get_mac_for_host(host):
+    res = get_all_hardware()
     mac = ""
     for re in res:
         if re['host'] == host:
@@ -125,10 +129,10 @@ def get_mac_for_host(server, port, creds, host):
     return mac
 
 
-def get_all_hardware(server, port, creds):
+def get_all_hardware():
     global all_hardware_info
     if all_hardware_info is None:
-        with grpc.secure_channel(server + ":" + port, creds) as channel:
+        with connect() as channel:
             stub = hardware_pb2_grpc.HardwareServiceStub(channel)
             response = stub.All(hardware_pb2.GetRequest())
             result = []
@@ -145,28 +149,27 @@ def get_all_hardware(server, port, creds):
     return all_hardware_info
 
 
-def get_hardware(args, creds):
+def get_hardware(args):
     if args.id is not None:
-        result = get_hardware_id(args.tink_host, args.rpc_port, creds, args.id)
+        result = get_hardware_id(args.id)
     elif args.host is not None:
-        result = get_hardware_name(args.tink_host, args.rpc_port, creds,
-                                   args.host)
+        result = get_hardware_name(args.host)
     else:
-        result = get_all_hardware(args.tink_host, args.rpc_port, creds)
+        result = get_all_hardware()
     return result
 
 
-def get_hardware_name(server, port, creds, hardware_name):
-    res = get_all_hardware(server, port, creds)
+def get_hardware_name(hardware_name):
+    res = get_all_hardware()
     result = None
     for re in res:
         if re['host'] == hardware_name:
-            result = get_hardware_id(server, port, creds, re['id'])
+            result = get_hardware_id(re['id'])
     return result
 
 
-def get_hardware_id(server, port, creds, hardware_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_hardware_id(hardware_id):
+    with connect() as channel:
         stub = hardware_pb2_grpc.HardwareServiceStub(channel)
         response = stub.ByID(hardware_pb2.GetRequest(id=hardware_id))
         result = {
@@ -178,8 +181,8 @@ def get_hardware_id(server, port, creds, hardware_id):
     return result
 
 
-def get_all_templates(server, port, creds):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_all_templates():
+    with connect() as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
         response = stub.ListTemplates(template_pb2.GetRequest())
         result = []
@@ -192,10 +195,10 @@ def get_all_templates(server, port, creds):
     return result
 
 
-def get_template_by_id(server, port, creds, template_id):
+def get_template_by_id(template_id):
     global all_template_info
     if all_template_info is None:
-        all_template_info = get_all_templates(server, port, creds)
+        all_template_info = get_all_templates()
     result = {}
     for re in all_template_info:
         if re['id'] == template_id:
@@ -203,8 +206,8 @@ def get_template_by_id(server, port, creds, template_id):
     return result
 
 
-def get_template_by_name(server, port, creds, template_name):
-    res = get_all_templates(server, port, creds)
+def get_template_by_name(template_name):
+    res = get_all_templates()
     result = None
     for re in res:
         if re['name'] == template_name:
@@ -212,26 +215,24 @@ def get_template_by_name(server, port, creds, template_name):
     return result
 
 
-def get_template_steps(server, port, creds, template_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_template_steps(template_id):
+    with connect() as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
         response = stub.GetTemplate(template_pb2.GetRequest(id=template_id))
     return response.data
 
 
-def get_template_steps_by_name(args, creds, raw_result):
-    temp_result = get_all_templates(args.tink_host, args.rpc_port, creds)
+def get_template_steps_by_name(args, raw_result):
+    temp_result = get_all_templates()
     for template in temp_result:
         if template['name'] == args.template_name:
             template_id = template['id']
-            raw_result = get_template_steps(args.tink_host,
-                                            args.rpc_port, creds,
-                                            template_id=template_id)
+            raw_result = get_template_steps(template_id)
     return raw_result
 
 
-def get_all_workflows(server, port, creds):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_all_workflows():
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         response = stub.ListWorkflows(workflow_pb2.GetRequest())
         result = []
@@ -239,14 +240,14 @@ def get_all_workflows(server, port, creds):
             re = {
                 'id': r.id,
             }
-            template = get_template_by_id(server, port, creds, template_id=r.template)
+            template = get_template_by_id(r.template)
             re['template'] = template
             re['state'] = state_map(r.state)
             hardware_json = json.loads(r.hardware)
             devs = []
             for dev in hardware_json.keys():
                 mac = hardware_json[dev]
-                host = get_host_for_mac(server, port, creds, mac)
+                host = get_host_for_mac(mac)
                 dev_data = {
                     'host': host,
                     'mac': mac,
@@ -258,8 +259,8 @@ def get_all_workflows(server, port, creds):
     return result
 
 
-def get_workflow_events(server, port, creds, workflow_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_workflow_events(workflow_id):
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         res = stub.ShowWorkflowEvents(workflow_pb2.GetRequest(id=workflow_id))
         result = {}
@@ -288,16 +289,16 @@ def get_workflow_events(server, port, creds, workflow_id):
     return result
 
 
-def get_workflow_by_workflow_id(server, port, creds, workflow_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_workflow_by_workflow_id(workflow_id):
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         req = workflow_pb2.WorkflowContextRequest(workflow_id=workflow_id)
         response = stub.GetWorkflowContexts(req)
         return response
 
 
-def get_workflow_by_hardware_id(server, port, creds, hardware_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def get_workflow_by_hardware_id(hardware_id):
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         req = workflow_pb2.WorkflowContextRequest(worker_id=hardware_id)
         response = stub.GetWorkflowContextList(req)
@@ -316,14 +317,14 @@ def get_workflow_by_hardware_id(server, port, creds, hardware_id):
     return res
 
 
-def get_workflow_by_host(server, port, creds, host):
-    hardware_info = get_hardware_name(server, port, creds, host)
-    result = get_workflow_by_hardware_id(server, port, creds, hardware_info['id'])
+def get_workflow_by_host(host):
+    hardware_info = get_hardware_name(host)
+    result = get_workflow_by_hardware_id(hardware_info['id'])
     return result
 
 
-def get_workflows_by_host(server, port, creds, host):
-    res = get_all_workflows(server, port, creds)
+def get_workflows_by_host(host):
+    res = get_all_workflows()
     result = []
     for re in res:
         for device in re['devices']:
@@ -332,7 +333,7 @@ def get_workflows_by_host(server, port, creds, host):
     return result
 
 
-def push_hardware(server, port, creds, hardware_file):
+def push_hardware(hardware_file):
     with open(hardware_file) as my_file:
         data = my_file.read()
 
@@ -343,7 +344,7 @@ def push_hardware(server, port, creds, hardware_file):
     hardware_mac = hardware['network']['interfaces'][0]['dhcp']['mac']
     if len(hardware['network']['interfaces']) != 1:
         raise ValueError("Must specify exactly one IP per host")
-    hardware_info = get_all_hardware(server=server, port=port, creds=creds)
+    hardware_info = get_all_hardware()
     for existing in hardware_info:
         if existing['host'].lower == hardware_hostname.lower():
             raise ValueError("Duplicate hostname")
@@ -365,29 +366,29 @@ def push_hardware(server, port, creds, hardware_file):
     hardware_wrapper.metadata = json.dumps(hardware['metadata'], separators=(',', ':'))
     hardware_wrapper.network.CopyFrom(nw)
 
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+    with connect() as channel:
         stub = hardware_pb2_grpc.HardwareServiceStub(channel)
         req = hardware_pb2.PushRequest(data=hardware_wrapper)
         stub.Push(req)
     return [hardware['id']]
 
 
-def push_template(server, port, creds, template_file):
+def push_template(template_file):
     with open(template_file) as my_file:
         data = my_file.read()
 
     template_data = yaml.load(data, Loader=yaml.Loader)
     template_name = template_data['name']
-    existing_template = get_template_by_name(server, port, creds, template_name)
+    existing_template = get_template_by_name(template_name)
     if existing_template is not None:
-        delete_template(server, port, creds, existing_template)
-    template_id = get_template_by_name(server, port, creds, template_name)
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+        delete_template(existing_template)
+    template_id = get_template_by_name(template_name)
+    with connect() as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
         if template_id is None:
             req = template_pb2.WorkflowTemplate(name=template_name, data=data)
             stub.CreateTemplate(req)
-            template_id = get_template_by_name(server, port, creds, template_name)
+            template_id = get_template_by_name(template_name)
         else:
             req = template_pb2.WorkflowTemplate(name=template_name, data=data,
                                                 id=template_id)
@@ -395,19 +396,18 @@ def push_template(server, port, creds, template_file):
     return [template_id]
 
 
-def push_workflow(server, port, creds, client_name, template_name):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def push_workflow(client_name, template_name):
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
-        client_mac = get_mac_for_host(server, port, creds, client_name)
+        client_mac = get_mac_for_host(client_name)
         if client_mac == "":
             raise Exception("Invalid host")
-        template_id = get_template_by_name(server, port, creds, template_name)
+        template_id = get_template_by_name(template_name)
         if template_id is None:
             raise Exception("Invalid template name")
         hardware = {'device_1': client_mac}
         hardware_json = json.dumps(hardware)
-        existing_workflows = get_workflows_by_host(server=server, port=port,
-                                                   creds=creds, host=client_name)
+        existing_workflows = get_workflows_by_host(client_name)
         for workflow in existing_workflows:
             if workflow['devices'][0]['host'].lower() == client_name.lower():
                 if workflow['state'] == "Running":
@@ -419,22 +419,22 @@ def push_workflow(server, port, creds, client_name, template_name):
     return [response.id]
 
 
-def delete_hardware(server, port, creds, hardware_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def delete_hardware(hardware_id):
+    with connect() as channel:
         stub = hardware_pb2_grpc.HardwareServiceStub(channel)
         stub.Delete(hardware_pb2.DeleteRequest(id=hardware_id))
     return True
 
 
-def delete_template(server, port, creds, template_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def delete_template(template_id):
+    with connect() as channel:
         stub = template_pb2_grpc.TemplateServiceStub(channel)
         stub.DeleteTemplate(template_pb2.GetRequest(id=template_id))
     return True
 
 
-def delete_workflow(server, port, creds, workflow_id):
-    with grpc.secure_channel(server + ":" + port, creds) as channel:
+def delete_workflow(workflow_id):
+    with connect() as channel:
         stub = workflow_pb2_grpc.WorkflowServiceStub(channel)
         stub.DeleteWorkflow(workflow_pb2.GetRequest(id=workflow_id))
     return True
@@ -461,41 +461,42 @@ def run():
         trusted_certs = response.read()
 
     creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+    auth = args.tink_host + ":" + args.rpc_port
+    global connect
+
+    def connect():
+        return grpc.secure_channel(auth, creds)
+
 
     result = None
     raw_result = None
     if args.action == "get":
         if args.object == "hardware":
-            result = get_hardware(args, creds)
+            result = get_hardware(args)
         elif args.object == "templates":
-            result = get_all_templates(args.tink_host, args.rpc_port, creds)
+            result = get_all_templates()
         elif args.object == "template":
             if args.template_name is not None:
-                raw_result = get_template_steps_by_name(args, creds, raw_result)
+                raw_result = get_template_steps_by_name(args, raw_result)
             elif args.id is not None:
-                raw_result = get_template_steps(args.tink_host, args.rpc_port, creds,
-                                                template_id=args.id)
+                raw_result = get_template_steps(args.id)
             else:
                 print("Can't get template without template_name or id")
         elif args.object == "workflows":
             if args.host is not None:
-                result = get_workflows_by_host(args.tink_host, args.rpc_port,
-                                               creds, args.host)
+                result = get_workflows_by_host(args.host)
             else:
-                result = get_all_workflows(args.tink_host, args.rpc_port, creds)
+                result = get_all_workflows()
         elif args.object == "workflow":
             if args.id is not None:
-                result = get_workflow_events(args.tink_host, args.rpc_port, creds,
-                                             workflow_id=args.id)
+                result = get_workflow_events(args.id)
             elif args.host is not None:
-                result = get_workflow_by_host(args.tink_host, args.rpc_port,
-                                              creds, args.host)
+                result = get_workflow_by_host(args.host)
             else:
                 print("Can't get workflow without host or id")
         elif args.object == "workflow_contexts_by_hardware_id":
             if args.id is not None:
-                result = get_workflow_by_hardware_id(args.tink_host, args.rpc_port,
-                                                     creds, hardware_id=args.id)
+                result = get_workflow_by_hardware_id(args.id)
             else:
                 print("Can't get workflow events without id")
         else:
@@ -504,12 +505,10 @@ def run():
     elif args.action == "push":
         if args.object == "workflow":
             if args.host is not None and args.template_name is not None:
-                result = push_workflow(args.tink_host, args.rpc_port, creds,
-                                       args.host, args.template_name)
+                result = push_workflow(args.host, args.template_name)
                 if args.reboot and \
                         ipmi_userid is not None and ipmi_password is not None:
-                    hardware_info = get_hardware_name(args.tink_host, args.rpc_port,
-                                                      creds, "ipmi." + args.host)
+                    hardware_info = get_hardware_name("ipmi." + args.host)
                     if hardware_info is not None:
                         bmc = hardware_info['ip']
                         ipmi_boot_pxe(host=bmc, username=ipmi_userid,
@@ -518,14 +517,12 @@ def run():
                 print("Workflow push requires host and template_name args")
         elif args.object == "hardware":
             if args.file is not None:
-                result = push_hardware(args.tink_host, args.rpc_port, creds,
-                                       args.file)
+                result = push_hardware(args.file)
             else:
                 print("Hardware push requires file arg")
         elif args.object == "template":
             if args.file is not None:
-                result = push_template(args.tink_host, args.rpc_port, creds,
-                                       args.file)
+                result = push_template(args.file)
             else:
                 print("Template push requires file arg")
         else:
@@ -533,20 +530,17 @@ def run():
     elif args.action == "delete":
         if args.object == "hardware":
             if args.id is not None:
-                result = delete_hardware(args.tink_host, args.rpc_port, creds,
-                                         args.id)
+                result = delete_hardware(args.id)
             else:
                 print("Hardware delete requires id arg")
         elif args.object == "template":
             if args.id is not None:
-                result = delete_template(args.tink_host, args.rpc_port, creds,
-                                         args.id)
+                result = delete_template(args.id)
             else:
                 print("Template delete requires id arg")
         elif args.object == "workflow":
             if args.id is not None:
-                result = delete_workflow(args.tink_host, args.rpc_port, creds,
-                                         args.id)
+                result = delete_workflow(args.id)
             else:
                 print("Workflow delete requires id arg")
         else:
