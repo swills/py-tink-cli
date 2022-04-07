@@ -464,11 +464,7 @@ def run():
 
     if args.tls:
         global connect
-        cert_url = 'http://' + args.tink_host + ':' + args.http_port + '/cert'
-        with urllib.request.urlopen(cert_url) as response:
-            trusted_certs = response.read()
-
-        creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+        creds = grpc.ssl_channel_credentials()
 
         def connect():
             return grpc.secure_channel(auth, creds)
