@@ -73,6 +73,10 @@ def create_parser():
                         dest="format",
                         default="json",
                         help="output format (json, yaml)")
+    parser.add_argument("--tls",
+                        dest="tls",
+                        default=True,
+                        help="connect using TLS")
     parser.add_argument("action",
                         help="action to perform")
     parser.add_argument("object",
@@ -455,18 +459,24 @@ def run():
         return
 
     args.tink_host = socket.gethostbyname(args.tink_host)
-
-    cert_url = 'http://' + args.tink_host + ':' + args.http_port + '/cert'
-    with urllib.request.urlopen(cert_url) as response:
-        trusted_certs = response.read()
-
-    creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
     auth = args.tink_host + ":" + args.rpc_port
     global connect
 
-    def connect():
-        return grpc.secure_channel(auth, creds)
+    if args.tls:
+        global connect
+        cert_url = 'http://' + args.tink_host + ':' + args.http_port + '/cert'
+        with urllib.request.urlopen(cert_url) as response:
+            trusted_certs = response.read()
 
+        creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+
+        def connect():
+            return grpc.secure_channel(auth, creds)
+    else:
+        global connect
+
+        def connect():
+            return grpc.insecure_channel(auth)
 
     result = None
     raw_result = None
